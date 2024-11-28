@@ -1,142 +1,151 @@
 import math
+import random
 
-# Define constants for the game
-ROWS = 6
-COLS = 7
-PLAYER_1 = 1  # Player 1 (e.g., Red)
-PLAYER_2 = 2  # Player 2 (e.g., Yellow)
-EMPTY = 0
+class Connect4Game:
+    def __init__(self, rows=6, cols=7):
+        self.rows = rows
+        self.cols = cols
+        self.board = [[0 for _ in range(cols)] for _ in range(rows)]  # 0 means empty, 1 means player 1, 2 means player 2
+        self.current_player = 1  # Player 1 starts first, but we'll change this randomly
 
-# Initialize the board
-def create_board():
-    return [[EMPTY for _ in range(COLS)] for _ in range(ROWS)]
+    def is_winner(self, player):
+        # Check horizontal, vertical, and diagonal for a winner
+        for row in range(self.rows):
+            for col in range(self.cols):
+                if self.check_direction(row, col, 1, 0, player) or \
+                   self.check_direction(row, col, 0, 1, player) or \
+                   self.check_direction(row, col, 1, 1, player) or \
+                   self.check_direction(row, col, 1, -1, player):
+                    return True
+        return False
 
-# Display the board
-def print_board(board):
-    for row in board:
-        print(" | ".join(str(cell) if cell != EMPTY else " " for cell in row))
-        print("-" * 29)
+    def check_direction(self, row, col, d_row, d_col, player):
+        # Check if there are 4 pieces in a row for the player in the given direction
+        for i in range(4):
+            r, c = row + i * d_row, col + i * d_col
+            if not (0 <= r < self.rows and 0 <= c < self.cols) or self.board[r][c] != player:
+                return False
+        return True
 
-# Check if a move is valid (if there is space in the column)
-def is_valid_move(board, col):
-    return board[0][col] == EMPTY
+    def is_full(self):
+        # Check if the board is full
+        for col in range(self.cols):
+            if self.board[0][col] == 0:
+                return False
+        return True
 
-# Drop a disk in the given column and return the new state of the board
-def make_move(board, col, player):
-    for row in range(ROWS-1, -1, -1):
-        if board[row][col] == EMPTY:
-            board[row][col] = player
-            break
-    return board
+    def get_valid_moves(self):
+        # Return list of columns where a move can be made
+        return [col for col in range(self.cols) if self.board[0][col] == 0]
 
-# Check if a player has won the game (4 in a row horizontally, vertically, or diagonally)
-def check_win(board, player):
-    # Check horizontal lines
-    for r in range(ROWS):
-        for c in range(COLS - 3):
-            if all(board[r][c + i] == player for i in range(4)):
-                return True
-    # Check vertical lines
-    for r in range(ROWS - 3):
-        for c in range(COLS):
-            if all(board[r + i][c] == player for i in range(4)):
-                return True
-    # Check diagonal (bottom-left to top-right)
-    for r in range(ROWS - 3):
-        for c in range(COLS - 3):
-            if all(board[r + i][c + i] == player for i in range(4)):
-                return True
-    # Check diagonal (top-left to bottom-right)
-    for r in range(3, ROWS):
-        for c in range(COLS - 3):
-            if all(board[r - i][c + i] == player for i in range(4)):
-                return True
-    return False
+    def make_move(self, col):
+        # Place a piece in the first available row in the given column
+        for row in range(self.rows - 1, -1, -1):
+            if self.board[row][col] == 0:
+                self.board[row][col] = self.current_player
+                break
 
-# Evaluate the board and return a score for Minimax
-def evaluate(board):
-    if check_win(board, PLAYER_1):
-        return 1000000  # Positive large number if Player 1 wins
-    elif check_win(board, PLAYER_2):
-        return -1000000  # Negative large number if Player 2 wins
-    return 0
+    def undo_move(self, col):
+        # Undo the most recent move in the given column
+        for row in range(self.rows):
+            if self.board[row][col] == self.current_player:
+                self.board[row][col] = 0
+                break
 
-# Minimax with Alpha-Beta Pruning
-def minimax(board, depth, alpha, beta, is_maximizing_player):
-    if depth == 0 or check_win(board, PLAYER_1) or check_win(board, PLAYER_2):
-        return evaluate(board)
+    def print_board(self):
+        # Print the current board
+        for row in self.board:
+            print(' '.join(str(cell) for cell in row))
+        print()
 
-    valid_moves = [c for c in range(COLS) if is_valid_move(board, c)]
-    
-    if is_maximizing_player:  # Maximizing for PLAYER_1
+    def switch_player(self):
+        self.current_player = 3 - self.current_player  # Switch between 1 and 2
+
+def minimax(game, depth, alpha, beta, maximizing_player):
+    if depth == 0 or game.is_winner(1) or game.is_winner(2) or game.is_full():
+        return evaluate_board(game)
+
+    valid_moves = game.get_valid_moves()
+
+    if maximizing_player:
         max_eval = -math.inf
         for col in valid_moves:
-            new_board = [row.copy() for row in board]
-            make_move(new_board, col, PLAYER_1)
-            eval = minimax(new_board, depth - 1, alpha, beta, False)
+            game.make_move(col)
+            eval = minimax(game, depth - 1, alpha, beta, False)
             max_eval = max(max_eval, eval)
             alpha = max(alpha, eval)
+            game.undo_move(col)
             if beta <= alpha:
                 break
         return max_eval
-    else:  # Minimizing for PLAYER_2
+    else:
         min_eval = math.inf
         for col in valid_moves:
-            new_board = [row.copy() for row in board]
-            make_move(new_board, col, PLAYER_2)
-            eval = minimax(new_board, depth - 1, alpha, beta, True)
+            game.make_move(col)
+            eval = minimax(game, depth - 1, alpha, beta, True)
             min_eval = min(min_eval, eval)
             beta = min(beta, eval)
+            game.undo_move(col)
             if beta <= alpha:
                 break
         return min_eval
 
-# Find the best move for the AI using Minimax with Alpha-Beta Pruning
-def find_best_move(board, player):
-    best_move = -1
-    best_value = -math.inf if player == PLAYER_1 else math.inf
+def evaluate_board(game):
+    if game.is_winner(1):
+        return 10000
+    elif game.is_winner(2):
+        return -10000
+    else:
+        return 0
 
-    for col in range(COLS):
-        if is_valid_move(board, col):
-            new_board = [row.copy() for row in board]
-            make_move(new_board, col, player)
-            move_value = minimax(new_board, 5, -math.inf, math.inf, player == PLAYER_2)
-            
-            if (player == PLAYER_1 and move_value > best_value) or (player == PLAYER_2 and move_value < best_value):
-                best_value = move_value
-                best_move = col
+def random_starting_point(game):
+    # Randomly choose who starts: Player 1 or Player 2
+    start_player = random.choice([1, 2])
+    game.current_player = start_player
+    print(f"Player {start_player} will start the game.")
 
-    return best_move
-
-# Main game loop
-def play_game():
-    board = create_board()
-    current_player = PLAYER_1
-    game_over = False
+def main():
+    # Initialize game
+    game = Connect4Game()
+    random_starting_point(game)  # Randomly select who starts
     
-    while not game_over:
-        print_board(board)
-        if current_player == PLAYER_1:
-            print("Player 1's turn (Red):")
-            move = find_best_move(board, PLAYER_1)
-        else:
-            print("Player 2's turn (Yellow):")
-            move = find_best_move(board, PLAYER_2)
+    # Game loop
+    while not game.is_winner(1) and not game.is_winner(2) and not game.is_full():
+        game.print_board()
+        print(f"Player {game.current_player}'s turn:")
+        
+        valid_moves = game.get_valid_moves()
 
-        if move != -1:
-            make_move(board, move, current_player)
+        # Minimax for the AI (Maximizing player = AI, Minimizing player = opponent)
+        if game.current_player == 1:  # AI turn (Player 1)
+            best_move = None
+            best_value = -math.inf
+            for col in valid_moves:
+                game.make_move(col)
+                move_value = minimax(game, 3, -math.inf, math.inf, False)  # Search with depth 3 for AI
+                if move_value > best_value:
+                    best_value = move_value
+                    best_move = col
+                game.undo_move(col)
 
-        if check_win(board, current_player):
-            print_board(board)
-            print(f"Player {current_player} wins!")
-            game_over = True
-        elif all(board[0][col] != EMPTY for col in range(COLS)):  # Check for draw
-            print_board(board)
-            print("It's a draw!")
-            game_over = True
+            print(f"AI (Player 1) chose column {best_move}")
+            game.make_move(best_move)
+        else:  # Human or random opponent move (Player 2)
+            # Random opponent move for demonstration
+            opponent_move = random.choice(valid_moves)
+            print(f"Player 2 (opponent) chose column {opponent_move}")
+            game.make_move(opponent_move)
 
-        current_player = PLAYER_2 if current_player == PLAYER_1 else PLAYER_1
+        game.switch_player()
 
-# Run the game
+    # End of game, print result
+    game.print_board()
+    if game.is_winner(1):
+        print("Player 1 wins!")
+    elif game.is_winner(2):
+        print("Player 2 wins!")
+    else:
+        print("It's a draw!")
+
 if __name__ == "__main__":
-    play_game()
+    main()
