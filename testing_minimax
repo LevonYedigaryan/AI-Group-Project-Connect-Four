@@ -1,0 +1,142 @@
+import math
+
+# Define constants for the game
+ROWS = 6
+COLS = 7
+PLAYER_1 = 1  # Player 1 (e.g., Red)
+PLAYER_2 = 2  # Player 2 (e.g., Yellow)
+EMPTY = 0
+
+# Initialize the board
+def create_board():
+    return [[EMPTY for _ in range(COLS)] for _ in range(ROWS)]
+
+# Display the board
+def print_board(board):
+    for row in board:
+        print(" | ".join(str(cell) if cell != EMPTY else " " for cell in row))
+        print("-" * 29)
+
+# Check if a move is valid (if there is space in the column)
+def is_valid_move(board, col):
+    return board[0][col] == EMPTY
+
+# Drop a disk in the given column and return the new state of the board
+def make_move(board, col, player):
+    for row in range(ROWS-1, -1, -1):
+        if board[row][col] == EMPTY:
+            board[row][col] = player
+            break
+    return board
+
+# Check if a player has won the game (4 in a row horizontally, vertically, or diagonally)
+def check_win(board, player):
+    # Check horizontal lines
+    for r in range(ROWS):
+        for c in range(COLS - 3):
+            if all(board[r][c + i] == player for i in range(4)):
+                return True
+    # Check vertical lines
+    for r in range(ROWS - 3):
+        for c in range(COLS):
+            if all(board[r + i][c] == player for i in range(4)):
+                return True
+    # Check diagonal (bottom-left to top-right)
+    for r in range(ROWS - 3):
+        for c in range(COLS - 3):
+            if all(board[r + i][c + i] == player for i in range(4)):
+                return True
+    # Check diagonal (top-left to bottom-right)
+    for r in range(3, ROWS):
+        for c in range(COLS - 3):
+            if all(board[r - i][c + i] == player for i in range(4)):
+                return True
+    return False
+
+# Evaluate the board and return a score for Minimax
+def evaluate(board):
+    if check_win(board, PLAYER_1):
+        return 1000000  # Positive large number if Player 1 wins
+    elif check_win(board, PLAYER_2):
+        return -1000000  # Negative large number if Player 2 wins
+    return 0
+
+# Minimax with Alpha-Beta Pruning
+def minimax(board, depth, alpha, beta, is_maximizing_player):
+    if depth == 0 or check_win(board, PLAYER_1) or check_win(board, PLAYER_2):
+        return evaluate(board)
+
+    valid_moves = [c for c in range(COLS) if is_valid_move(board, c)]
+    
+    if is_maximizing_player:  # Maximizing for PLAYER_1
+        max_eval = -math.inf
+        for col in valid_moves:
+            new_board = [row.copy() for row in board]
+            make_move(new_board, col, PLAYER_1)
+            eval = minimax(new_board, depth - 1, alpha, beta, False)
+            max_eval = max(max_eval, eval)
+            alpha = max(alpha, eval)
+            if beta <= alpha:
+                break
+        return max_eval
+    else:  # Minimizing for PLAYER_2
+        min_eval = math.inf
+        for col in valid_moves:
+            new_board = [row.copy() for row in board]
+            make_move(new_board, col, PLAYER_2)
+            eval = minimax(new_board, depth - 1, alpha, beta, True)
+            min_eval = min(min_eval, eval)
+            beta = min(beta, eval)
+            if beta <= alpha:
+                break
+        return min_eval
+
+# Find the best move for the AI using Minimax with Alpha-Beta Pruning
+def find_best_move(board, player):
+    best_move = -1
+    best_value = -math.inf if player == PLAYER_1 else math.inf
+
+    for col in range(COLS):
+        if is_valid_move(board, col):
+            new_board = [row.copy() for row in board]
+            make_move(new_board, col, player)
+            move_value = minimax(new_board, 5, -math.inf, math.inf, player == PLAYER_2)
+            
+            if (player == PLAYER_1 and move_value > best_value) or (player == PLAYER_2 and move_value < best_value):
+                best_value = move_value
+                best_move = col
+
+    return best_move
+
+# Main game loop
+def play_game():
+    board = create_board()
+    current_player = PLAYER_1
+    game_over = False
+    
+    while not game_over:
+        print_board(board)
+        if current_player == PLAYER_1:
+            print("Player 1's turn (Red):")
+            move = find_best_move(board, PLAYER_1)
+        else:
+            print("Player 2's turn (Yellow):")
+            move = find_best_move(board, PLAYER_2)
+
+        if move != -1:
+            make_move(board, move, current_player)
+
+        if check_win(board, current_player):
+            print_board(board)
+            print(f"Player {current_player} wins!")
+            game_over = True
+        elif all(board[0][col] != EMPTY for col in range(COLS)):  # Check for draw
+            print_board(board)
+            print("It's a draw!")
+            game_over = True
+
+        current_player = PLAYER_2 if current_player == PLAYER_1 else PLAYER_1
+
+# Run the game
+if __name__ == "__main__":
+    play_game()
