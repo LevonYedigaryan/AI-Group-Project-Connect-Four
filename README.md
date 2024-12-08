@@ -1,9 +1,9 @@
 # AI Group Project: Connect 4
 
-### Team: Elen Pluzyan, Tatev Stepanyan, Levon Yedigaryan
-### CS241/346 Artificial Intelligence and Decision Support
-### Professor Monika Stepanyan
-### Fall 2024, AUA
+**Team**: Elen Pluzyan, Tatev Stepanyan, Levon Yedigaryan
+**Course**: CS241/346 Artificial Intelligence and Decision Support
+**Professor**: Monika Stepanyan
+Fall 2024, AUA
 
 ---
 
